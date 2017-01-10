@@ -5,8 +5,8 @@ import com.datio.streaming.Commons.Commons._
 import com.typesafe.config.ConfigFactory
 import kafka.serializer._
 import org.apache.spark.sql.SQLContext
-import org.apache.spark.streaming.{StreamingContext, Seconds}
-import org.apache.spark.{SparkContext, SparkConf}
+import org.apache.spark.streaming.{Seconds, StreamingContext}
+import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.streaming.kafka.KafkaUtils
 import com.datio.streaming.Output.ParquetConnSettings
 
@@ -18,7 +18,7 @@ object StreamProcessor {
     implicit val conf = ConfigFactory.load
 
     val sparkConf = new SparkConf()
-      //.setMaster(conf.getString("spark.master"))
+      .setMaster(conf.getString("spark.master"))
       .setAppName(conf.getString("spark.appName"))
 
     sparkConf.set("spark.streaming.backpressure.enabled", "true")
@@ -28,13 +28,14 @@ object StreamProcessor {
 
     val sparkContext = new SparkContext(sparkConf)
     val sqlContext = new SQLContext(sparkContext)
-    val ssc = new StreamingContext(sparkContext, Seconds(2))
+    val ssc = new StreamingContext(sparkContext, Seconds(10))
 
     val kafkaParams = Map(
     "metadata.broker.list" -> conf.getString("kafka.metadata.broker.list"),
     "group.id" -> conf.getString("kafka.group.id"))
 
     val parquetSettings = ParquetConnSettings(sqlContext)
+    val operations = Operations.Operations(sqlContext)
 
 
     val topic = conf.getString("kafka.topics")
@@ -48,7 +49,9 @@ object StreamProcessor {
       toRow(jsonParsed)
     }).foreachRDD(rdd => {
       if(!rdd.isEmpty()){
-      parquetSettings.save(rdd)
+//      parquetSettings.save(rdd)
+       parquetSettings.saveDf(operations.group(operations.createDF(rdd)))
+
       }
     })
 
