@@ -1,0 +1,8 @@
+target/
+.idea/
+*.jar
+*.war
+*.ear
+*.iml
+*~
+.gitignore
