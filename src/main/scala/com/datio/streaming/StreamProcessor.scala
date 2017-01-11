@@ -9,6 +9,12 @@ import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.streaming.kafka.KafkaUtils
 import com.datio.streaming.Output.ParquetConnSettings
+import com.datio.streaming.Structure.Event
+import com.datio.streaming.Structure.MyJsonProtocol._
+import spray.json._
+import DefaultJsonProtocol._
+
+import scala.collection.JavaConversions._
 
 
 object StreamProcessor {
@@ -31,8 +37,8 @@ object StreamProcessor {
     val ssc = new StreamingContext(sparkContext, Seconds(10))
 
     val kafkaParams = Map(
-    "metadata.broker.list" -> conf.getString("kafka.metadata.broker.list"),
-    "group.id" -> conf.getString("kafka.group.id"))
+      "metadata.broker.list" -> conf.getString("kafka.metadata.broker.list"),
+      "group.id" -> conf.getString("kafka.group.id"))
 
     val parquetSettings = ParquetConnSettings(sqlContext)
     val operations = Operations.Operations(sqlContext)
@@ -45,18 +51,17 @@ object StreamProcessor {
 
 
     kafkaStream.map(value => {
-      val jsonParsed = parseJSONField(value)
-      toRow(jsonParsed)
+      value.parseJson.convertTo[Event].payload
     }).foreachRDD(rdd => {
-      if(!rdd.isEmpty()){
-//      parquetSettings.save(rdd)
-       parquetSettings.saveDf(operations.group(operations.createDF(rdd)))
+      import sqlContext.implicits._
 
+      if(!rdd.isEmpty()){
+        val df = rdd.toDF()
+        val groupedDf = operations.group(df)
+        parquetSettings.saveDf(groupedDf)
       }
     })
-
     ssc.start()
     ssc.awaitTermination()
-
   }
 }
