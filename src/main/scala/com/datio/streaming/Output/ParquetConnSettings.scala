@@ -4,7 +4,7 @@ import com.typesafe.config.Config
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SaveMode._
 import org.apache.spark.sql.types.{StringType, StructField, StructType}
-import org.apache.spark.sql.{Row, SQLContext}
+import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 
 case class ParquetConnSettings(SQLContext: SQLContext) {
 
@@ -19,5 +19,10 @@ case class ParquetConnSettings(SQLContext: SQLContext) {
     df.show
     df.printSchema()
     df.write.mode(Append).parquet(hdfsPath)
+  }
+
+  def saveDf(dataFrame: DataFrame)(implicit conf: Config): Unit = {
+    val hdfsPath = conf.getString("hdfs.path")
+    dataFrame.write.mode(Append).parquet(hdfsPath)
   }
 }

@@ -5,10 +5,16 @@ import com.datio.streaming.Commons.Commons._
 import com.typesafe.config.ConfigFactory
 import kafka.serializer._
 import org.apache.spark.sql.SQLContext
-import org.apache.spark.streaming.{StreamingContext, Seconds}
-import org.apache.spark.{SparkContext, SparkConf}
+import org.apache.spark.streaming.{Seconds, StreamingContext}
+import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.streaming.kafka.KafkaUtils
 import com.datio.streaming.Output.ParquetConnSettings
+import com.datio.streaming.Structure.Event
+import com.datio.streaming.Structure.MyJsonProtocol._
+import spray.json._
+import DefaultJsonProtocol._
+
+import scala.collection.JavaConversions._
 
 
 object StreamProcessor {
@@ -18,7 +24,7 @@ object StreamProcessor {
     implicit val conf = ConfigFactory.load
 
     val sparkConf = new SparkConf()
-      //.setMaster(conf.getString("spark.master"))
+      .setMaster(conf.getString("spark.master"))
       .setAppName(conf.getString("spark.appName"))
 
     sparkConf.set("spark.streaming.backpressure.enabled", "true")
@@ -28,13 +34,14 @@ object StreamProcessor {
 
     val sparkContext = new SparkContext(sparkConf)
     val sqlContext = new SQLContext(sparkContext)
-    val ssc = new StreamingContext(sparkContext, Seconds(2))
+    val ssc = new StreamingContext(sparkContext, Seconds(10))
 
     val kafkaParams = Map(
-    "metadata.broker.list" -> conf.getString("kafka.metadata.broker.list"),
-    "group.id" -> conf.getString("kafka.group.id"))
+      "metadata.broker.list" -> conf.getString("kafka.metadata.broker.list"),
+      "group.id" -> conf.getString("kafka.group.id"))
 
     val parquetSettings = ParquetConnSettings(sqlContext)
+    val operations = Operations.Operations(sqlContext)
 
 
     val topic = conf.getString("kafka.topics")
@@ -44,16 +51,17 @@ object StreamProcessor {
 
 
     kafkaStream.map(value => {
-      val jsonParsed = parseJSONField(value)
-      toRow(jsonParsed)
+      value.parseJson.convertTo[Event].payload
     }).foreachRDD(rdd => {
+      import sqlContext.implicits._
+
       if(!rdd.isEmpty()){
-      parquetSettings.save(rdd)
+        val df = rdd.toDF()
+        val groupedDf = operations.group(df)
+        parquetSettings.saveDf(groupedDf)
       }
     })
-
     ssc.start()
     ssc.awaitTermination()
-
   }
 }
