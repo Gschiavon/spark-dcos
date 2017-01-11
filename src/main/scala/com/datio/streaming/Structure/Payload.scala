@@ -1,8 +1,6 @@
 package com.datio.streaming.Structure
 
-import spray.json
 import spray.json.{DefaultJsonProtocol, JsValue, RootJsonFormat}
-
 
 case class Payload(id: Double, name: String, surname: String, age: Int)
 

@@ -1,7 +1,6 @@
 package com.datio.streaming
 
 
-import com.datio.streaming.Commons.Commons._
 import com.typesafe.config.ConfigFactory
 import kafka.serializer._
 import org.apache.spark.sql.SQLContext
@@ -12,10 +11,6 @@ import com.datio.streaming.Output.ParquetConnSettings
 import com.datio.streaming.Structure.Event
 import com.datio.streaming.Structure.MyJsonProtocol._
 import spray.json._
-import DefaultJsonProtocol._
-
-import scala.collection.JavaConversions._
-
 
 object StreamProcessor {
 
