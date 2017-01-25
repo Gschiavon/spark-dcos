@@ -1,0 +1,18 @@
+{
+	"type": "record",
+	"name": "people",
+	"connect.name": "people",
+	"fields": [{
+		"name": "id",
+		"type": "int"
+	}, {
+		"name": "name",
+		"type": "string"
+	}, {
+		"name": "surname",
+		"type": "string"
+	}, {
+		"name": "age",
+		"type": "int"
+	}]
+}
