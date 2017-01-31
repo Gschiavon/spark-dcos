@@ -2,24 +2,28 @@ package com.datio.streaming
 
 
 import com.typesafe.config.ConfigFactory
-import kafka.serializer._
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.streaming.kafka.KafkaUtils
 import com.datio.streaming.Output.ParquetConnSettings
-import com.datio.streaming.Structure.Event
-import com.datio.streaming.Structure.MyJsonProtocol._
-import spray.json._
+import com.datio.streaming.Structure.AvroMessage
+import io.confluent.kafka.serializers.KafkaAvroDecoder
+import org.apache.avro.Schema
+import org.apache.avro.generic.GenericRecord
+
+
+import scala.io.Source
 
 object StreamProcessor {
 
   def main(args: Array[String]): Unit = {
 
     implicit val conf = ConfigFactory.load
-
+    val schemaString = Source.fromURL(getClass.getResource("/avro-schema.avsc")).mkString
+    val schema = new Schema.Parser().parse(schemaString)
     val sparkConf = new SparkConf()
-      .setMaster(conf.getString("spark.master"))
+//      .setMaster(conf.getString("spark.master"))
       .setAppName(conf.getString("spark.appName"))
 
     sparkConf.set("spark.streaming.backpressure.enabled", "true")
@@ -33,6 +37,7 @@ object StreamProcessor {
 
     val kafkaParams = Map(
       "metadata.broker.list" -> conf.getString("kafka.metadata.broker.list"),
+      "schema.registry.url" -> conf.getString("kafka.schema.registry.url"),
       "group.id" -> conf.getString("kafka.group.id"))
 
     val parquetSettings = ParquetConnSettings(sqlContext)
@@ -42,18 +47,28 @@ object StreamProcessor {
     val topic = conf.getString("kafka.topics")
     val topicSet = Set(topic)
     val kafkaStream = KafkaUtils
-      .createDirectStream[String, String, StringDecoder, StringDecoder](ssc, kafkaParams, topicSet).map(_._2)
+      .createDirectStream[Object, Object, KafkaAvroDecoder, KafkaAvroDecoder](ssc, kafkaParams, topicSet).map(_._2)
+
 
 
     kafkaStream.map(value => {
-      value.parseJson.convertTo[Event].payload
+      AvroMessage(value.asInstanceOf[GenericRecord].get("id").toString.toInt,
+        value.asInstanceOf[GenericRecord].get("name").toString,
+        value.asInstanceOf[GenericRecord].get("surname").toString,
+        value.asInstanceOf[GenericRecord].get("age").toString.toInt)
+
     }).foreachRDD(rdd => {
       import sqlContext.implicits._
 
       if(!rdd.isEmpty()){
         val df = rdd.toDF()
-        val groupedDf = operations.group(df)
-        parquetSettings.saveDf(groupedDf)
+        println("*********************************************")
+        df.show
+        println("*********************************************")
+        println("*********************************************")
+//        val groupedDf = operations.group(df)
+        parquetSettings.saveDf(df)
+        println("*********************************************")
       }
     })
     ssc.start()

@@ -23,6 +23,6 @@ case class ParquetConnSettings(SQLContext: SQLContext) {
 
   def saveDf(dataFrame: DataFrame)(implicit conf: Config): Unit = {
     val hdfsPath = conf.getString("hdfs.path")
-    dataFrame.write.mode(Append).parquet(hdfsPath)
+    dataFrame.write.mode(Append).partitionBy("age").parquet(hdfsPath)
   }
 }
