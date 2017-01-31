@@ -66,8 +66,8 @@ object StreamProcessor {
         df.show
         println("*********************************************")
         println("*********************************************")
-        val groupedDf = operations.group(df)
-        parquetSettings.saveDf(groupedDf)
+//        val groupedDf = operations.group(df)
+        parquetSettings.saveDf(df)
         println("*********************************************")
       }
     })
