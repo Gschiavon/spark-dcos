@@ -21,7 +21,6 @@ case class Operations(SQLContext: SQLContext) {
 	def group(df: DataFrame): DataFrame = {
 		val df1 = df.groupBy("name").count
 		val dfSorted = df1.sort(df1("count").desc)
-		dfSorted.show
 		dfSorted
 	}
 }

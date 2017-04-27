@@ -62,13 +62,8 @@ object StreamProcessor {
 
       if(!rdd.isEmpty()){
         val df = rdd.toDF()
-        println("*********************************************")
-        df.show
-        println("*********************************************")
-        println("*********************************************")
-//        val groupedDf = operations.group(df)
-        parquetSettings.saveDf(df)
-        println("*********************************************")
+        val groupedDf = operations.group(df)
+        parquetSettings.saveDf(groupedDf)
       }
     })
     ssc.start()
